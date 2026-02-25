@@ -19,6 +19,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
 
       - name: Build
         run: cargo build
@@ -28,7 +30,7 @@ jobs:
 
       - name: Check formatting
         if: matrix.os == 'ubuntu-latest'
-        run: rustfmt --check src/**/*.rs
+        run: cargo fmt -- --check
 
   clippy:
     runs-on: ubuntu-latest

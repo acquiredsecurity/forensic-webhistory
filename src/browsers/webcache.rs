@@ -31,8 +31,7 @@ fn parse_ese_datetime(s: &str) -> Option<DateTime<Utc>> {
     if let Ok(ft) = s.parse::<u64>() {
         if ft > 0 {
             let microseconds = ft / 10;
-            let epoch = chrono::NaiveDate::from_ymd_opt(1601, 1, 1)?
-                .and_hms_opt(0, 0, 0)?;
+            let epoch = chrono::NaiveDate::from_ymd_opt(1601, 1, 1)?.and_hms_opt(0, 0, 0)?;
             let dt = epoch + chrono::Duration::microseconds(microseconds as i64);
             return Some(DateTime::from_naive_utc_and_offset(dt, Utc));
         }
@@ -99,8 +98,8 @@ fn parse_url(text: &str) -> (Option<String>, Option<String>) {
 pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
     let db_str = db_path.to_string_lossy().to_string();
 
-    let db = EseDb::open(db_path)
-        .with_context(|| format!("Failed to open ESE database: {}", db_str))?;
+    let db =
+        EseDb::open(db_path).with_context(|| format!("Failed to open ESE database: {}", db_str))?;
 
     // Find history container IDs from the Containers table
     let containers = db
@@ -118,9 +117,7 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
             .iter_values()
             .ok()
             .into_iter()
-            .flat_map(|iter| {
-                iter.map(|v| v.map(|val| val.to_string()).unwrap_or_default())
-            })
+            .flat_map(|iter| iter.map(|v| v.map(|val| val.to_string()).unwrap_or_default()))
             .collect();
 
         // Column 0 = ContainerId, Column 8 = Name
@@ -182,7 +179,10 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
                 .collect();
 
             // Get URL
-            let url_raw = url_idx.and_then(|i| vals.get(i)).map(|s| s.as_str()).unwrap_or("");
+            let url_raw = url_idx
+                .and_then(|i| vals.get(i))
+                .map(|s| s.as_str())
+                .unwrap_or("");
             let (url_opt, user_opt) = parse_url(url_raw);
 
             let url = match url_opt {
