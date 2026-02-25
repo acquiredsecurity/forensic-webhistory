@@ -4,7 +4,7 @@ FORENSIC BROWSER HISTORY ANALYZER
 
 # Forensic Browser History Analyzer
 
-Cross-platform browser history forensic extractor written in Rust. Point it at a triage folder (KAPE output, mounted disk image, or raw filesystem) and it will automatically detect and extract browsing history from every supported browser into NirSoft BrowsingHistoryView-compatible CSV format.
+Cross-platform browser history forensic extractor written in Rust. Point it at a triage folder (KAPE output, mounted disk image, or raw filesystem) and it will automatically detect and extract browsing history from every supported CSV format.
 
 ## Supported Browsers
 
