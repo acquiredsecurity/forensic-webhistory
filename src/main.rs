@@ -8,31 +8,6 @@ use forensic_webhistory::browsers::{self, BrowserType, HistoryEntry};
 use forensic_webhistory::output;
 use forensic_webhistory::scanner;
 
-const BANNER: &str = r#"
-    ___                        _        __    __  _     _
-   / __\__  _ __ ___ _ __  ___(_) ___  / / /\ \ \| |__ (_)___
-  / _\/ _ \| '__/ _ \ '_ \/ __| |/ __| \ \/  \/ /| '_ \| / __|
- / / | (_) | | |  __/ | | \__ \ | (__   \  /\  / | | | | \__ \
- \/   \___/|_|  \___|_| |_|___/_|\___|   \/  \/  |_| |_|_|___/
-  ___                                     _   _      _
- / __\_ __ _____      _____  ___ _ __   | | | |_ __| |
-/ _\/| '__/ _ \ \ /\ / / __|/ _ \ '__|  | |_| | '__| |
-/ /  | | | (_) \ V  V /\__ \  __/ |     |  _  | |  | |
-\/   |_|  \___/ \_/\_/ |___/\___|_|     |_| |_|_|  |_|
-  ___              _
- / _ \__ _ _ __ __| |_ __   ___ _ __
-/ /_)/ _` | '__/ _` | '_ \ / _ \ '__|
-/ ___/ (_| | | | (_| | | | |  __/ |
-\/    \__,_|_|  \__,_|_| |_|\___|_|
-"#;
-
-const BANNER_COMPACT: &str = r#"
-  ╔══════════════════════════════════════════════════════════╗
-  ║        FORENSIC BROWSER HISTORY ANALYZER                ║
-  ║        Cross-platform web history extraction tool        ║
-  ╚══════════════════════════════════════════════════════════╝
-"#;
-
 #[derive(Parser)]
 #[command(
     name = "forensic-webhistory",
@@ -112,14 +87,20 @@ fn main() -> Result<()> {
             output,
             browser,
             user,
-        } => cmd_extract(&input, output.as_deref(), browser.as_deref(), user.as_deref(), cli.verbose),
+        } => cmd_extract(
+            &input,
+            output.as_deref(),
+            browser.as_deref(),
+            user.as_deref(),
+            cli.verbose,
+        ),
     }
 }
 
 fn interactive_menu() -> Result<()> {
-    println!("{BANNER}");
-    println!("{BANNER_COMPACT}");
-    println!("  v{}\n", env!("CARGO_PKG_VERSION"));
+    println!();
+    println!("  Forensic Browser History Analyzer v{}", env!("CARGO_PKG_VERSION"));
+    println!();
     println!("  Supported Browsers:");
     println!("    Chrome, Edge Chromium, Brave, Opera, Vivaldi (SQLite)");
     println!("    Firefox (places.sqlite)");
@@ -127,12 +108,10 @@ fn interactive_menu() -> Result<()> {
     println!();
 
     loop {
-        println!("  ┌─────────────────────────────────────────────┐");
-        println!("  │  [1] Scan triage directory (auto-detect)    │");
-        println!("  │  [2] Extract from specific database file    │");
-        println!("  │  [3] Show help                              │");
-        println!("  │  [0] Exit                                   │");
-        println!("  └─────────────────────────────────────────────┘");
+        println!("  [1] Scan triage directory (auto-detect)");
+        println!("  [2] Extract from specific database file");
+        println!("  [3] Show help");
+        println!("  [0] Exit");
         print!("\n  Select option: ");
         io::stdout().flush()?;
 
@@ -144,7 +123,8 @@ fn interactive_menu() -> Result<()> {
             "1" => {
                 let dir = prompt("  Triage directory path: ")?;
                 let output = prompt("  Output directory path: ")?;
-                let user = prompt_optional("  Username override (Enter to auto-detect): ")?;
+                let user =
+                    prompt_optional("  Username override (Enter to auto-detect): ")?;
 
                 let dir = PathBuf::from(dir.trim());
                 let output = PathBuf::from(output.trim());
@@ -155,8 +135,11 @@ fn interactive_menu() -> Result<()> {
             }
             "2" => {
                 let file = prompt("  Database file path: ")?;
-                let output = prompt_optional("  Output CSV path (Enter for stdout): ")?;
-                let browser = prompt_optional("  Browser type [chrome/firefox/ie] (Enter to auto-detect): ")?;
+                let output =
+                    prompt_optional("  Output CSV path (Enter for stdout): ")?;
+                let browser = prompt_optional(
+                    "  Browser type [chrome/firefox/ie] (Enter to auto-detect): ",
+                )?;
                 let user = prompt_optional("  Username (Enter to skip): ")?;
 
                 let file = PathBuf::from(file.trim());
@@ -175,16 +158,28 @@ fn interactive_menu() -> Result<()> {
             "3" => {
                 println!();
                 println!("  USAGE:");
-                println!("    forensic-webhistory scan -d <triage_dir> -o <output_dir>");
-                println!("    forensic-webhistory extract -i <db_file> -o <output.csv>");
+                println!(
+                    "    forensic-webhistory scan -d <triage_dir> -o <output_dir>"
+                );
+                println!(
+                    "    forensic-webhistory extract -i <db_file> -o <output.csv>"
+                );
                 println!();
                 println!("  SCAN MODE:");
-                println!("    Recursively scans a triage directory (KAPE output, mounted image)");
-                println!("    for browser databases and extracts history from all found artifacts.");
+                println!(
+                    "    Recursively scans a triage directory (KAPE output, mounted image)"
+                );
+                println!(
+                    "    for browser databases and extracts history from all found artifacts."
+                );
                 println!();
                 println!("  EXTRACT MODE:");
-                println!("    Extracts history from a single browser database file.");
-                println!("    Auto-detects browser from filename (History, places.sqlite, WebCacheV01.dat).");
+                println!(
+                    "    Extracts history from a single browser database file."
+                );
+                println!(
+                    "    Auto-detects browser from filename (History, places.sqlite, WebCacheV01.dat)."
+                );
                 println!();
                 println!("  OUTPUT FORMAT:");
                 println!("    NirSoft BrowsingHistoryView-compatible CSV.");
@@ -258,8 +253,12 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
         );
     }
 
-    std::fs::create_dir_all(output_dir)
-        .with_context(|| format!("Failed to create output directory: {}", output_dir.display()))?;
+    std::fs::create_dir_all(output_dir).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_dir.display()
+        )
+    })?;
 
     let mut total = 0usize;
     let mut errors = 0usize;
@@ -344,10 +343,7 @@ fn cmd_extract(
     }
 
     let username = user.unwrap_or("");
-    let file_name = input
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
+    let file_name = input.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     info!("Extracting from: {}", input.display());
 

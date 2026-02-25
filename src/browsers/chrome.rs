@@ -165,7 +165,9 @@ mod tests {
             BrowserType::Chrome
         );
         assert_eq!(
-            detect_browser("/Users/test/AppData/Local/BraveSoftware/Brave-Browser/User Data/Default/History"),
+            detect_browser(
+                "/Users/test/AppData/Local/BraveSoftware/Brave-Browser/User Data/Default/History"
+            ),
             BrowserType::Brave
         );
         assert_eq!(

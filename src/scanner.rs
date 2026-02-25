@@ -9,7 +9,7 @@ fn extract_username(path: &Path) -> String {
     let lower = path_str.to_lowercase();
     if let Some(idx) = lower.find("users") {
         let after = &path_str[idx + 6..]; // skip "Users/"
-        if let Some(sep) = after.find(|c| c == '/' || c == '\\') {
+        if let Some(sep) = after.find(['/', '\\']) {
             return after[..sep].to_string();
         }
     }
@@ -131,10 +131,14 @@ mod tests {
 
     #[test]
     fn test_extract_username() {
-        let path = Path::new("/triage/F/Users/Administrator/AppData/Local/Google/Chrome/User Data/Default/History");
+        let path = Path::new(
+            "/triage/F/Users/Administrator/AppData/Local/Google/Chrome/User Data/Default/History",
+        );
         assert_eq!(extract_username(path), "Administrator");
 
-        let path = Path::new("/triage/C/Users/john.doe/AppData/Local/Microsoft/Windows/WebCache/WebCacheV01.dat");
+        let path = Path::new(
+            "/triage/C/Users/john.doe/AppData/Local/Microsoft/Windows/WebCache/WebCacheV01.dat",
+        );
         assert_eq!(extract_username(path), "john.doe");
     }
 
@@ -145,7 +149,9 @@ mod tests {
             BrowserType::Chrome
         );
         assert_eq!(
-            detect_chromium_browser("/appdata/local/bravesoftware/brave-browser/user data/default/history"),
+            detect_chromium_browser(
+                "/appdata/local/bravesoftware/brave-browser/user data/default/history"
+            ),
             BrowserType::Brave
         );
     }

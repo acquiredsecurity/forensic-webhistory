@@ -42,7 +42,7 @@ pub fn write_csv(entries: &[HistoryEntry], output_path: &Path) -> Result<usize> 
 
     // Write entries
     for entry in entries {
-        wtr.write_record(&[
+        wtr.write_record([
             &entry.url,
             &entry.title,
             &entry.visit_time.format("%m/%d/%Y %I:%M:%S %p").to_string(),
@@ -76,7 +76,7 @@ pub fn write_csv_stdout(entries: &[HistoryEntry]) -> Result<usize> {
     wtr.write_record(HEADERS)?;
 
     for entry in entries {
-        wtr.write_record(&[
+        wtr.write_record([
             &entry.url,
             &entry.title,
             &entry.visit_time.format("%m/%d/%Y %I:%M:%S %p").to_string(),
