@@ -1,5 +1,6 @@
 pub mod chrome;
 pub mod firefox;
+pub mod safari;
 pub mod webcache;
 
 use chrono::{DateTime, Utc};
@@ -40,7 +41,9 @@ pub enum BrowserType {
     Opera,
     Vivaldi,
     Chromium,
+    Arc,
     Firefox,
+    Safari,
     InternetExplorer,
 }
 
@@ -53,7 +56,9 @@ impl BrowserType {
             Self::Opera => "Opera",
             Self::Vivaldi => "Vivaldi",
             Self::Chromium => "Chromium",
+            Self::Arc => "Arc",
             Self::Firefox => "Firefox",
+            Self::Safari => "Safari",
             Self::InternetExplorer => "Internet Explorer 10/11 / Edge",
         }
     }

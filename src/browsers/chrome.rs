@@ -46,6 +46,8 @@ fn detect_browser(path: &str) -> BrowserType {
         BrowserType::Vivaldi
     } else if lower.contains("edge") || lower.contains("msedge") {
         BrowserType::EdgeChromium
+    } else if lower.contains("/arc/") {
+        BrowserType::Arc
     } else if lower.contains("chromium") {
         BrowserType::Chromium
     } else {

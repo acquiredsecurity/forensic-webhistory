@@ -75,6 +75,16 @@ pub fn scan(triage_path: &Path) -> Vec<BrowserArtifact> {
                 });
             }
 
+            // Safari — History.db (macOS only, ~/Library/Safari/History.db)
+            "History.db" if path_lower.contains("safari") => {
+                artifacts.push(BrowserArtifact {
+                    browser: BrowserType::Safari,
+                    db_path: path_str,
+                    profile_name: String::new(),
+                    username: extract_username(path),
+                });
+            }
+
             // IE/Edge Legacy — WebCacheV01.dat
             "WebCacheV01.dat" => {
                 artifacts.push(BrowserArtifact {
@@ -104,6 +114,7 @@ fn is_chromium_history(path: &Path) -> bool {
         || path_lower.contains("brave")
         || path_lower.contains("opera")
         || path_lower.contains("vivaldi")
+        || path_lower.contains("/arc/")
         // Or inside a "User Data" directory (generic Chromium pattern)
         || path_lower.contains("user data")
 }
@@ -118,6 +129,8 @@ fn detect_chromium_browser(path_lower: &str) -> BrowserType {
         BrowserType::Vivaldi
     } else if path_lower.contains("edge") || path_lower.contains("msedge") {
         BrowserType::EdgeChromium
+    } else if path_lower.contains("/arc/") {
+        BrowserType::Arc
     } else if path_lower.contains("chromium") {
         BrowserType::Chromium
     } else {

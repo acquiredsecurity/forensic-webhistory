@@ -105,8 +105,9 @@ fn interactive_menu() -> Result<()> {
     );
     println!();
     println!("  Supported Browsers:");
-    println!("    Chrome, Edge Chromium, Brave, Opera, Vivaldi (SQLite)");
+    println!("    Chrome, Edge Chromium, Brave, Opera, Vivaldi, Arc (SQLite)");
     println!("    Firefox (places.sqlite)");
+    println!("    Safari (History.db — macOS)");
     println!("    Internet Explorer / Edge Legacy (WebCacheV01.dat ESE)");
     println!();
 
@@ -270,6 +271,7 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
         let entries = match artifact.browser {
             BrowserType::InternetExplorer => browsers::webcache::extract(&db_path, username),
             BrowserType::Firefox => browsers::firefox::extract(&db_path, username),
+            BrowserType::Safari => browsers::safari::extract(&db_path, username),
             _ => browsers::chrome::extract(&db_path, username, Some(artifact.browser)),
         };
 
@@ -337,13 +339,14 @@ fn cmd_extract(
 
     let entries: Vec<HistoryEntry> = match browser.map(|b| b.to_lowercase()).as_deref() {
         Some("chrome") | Some("chromium") | Some("edge") | Some("brave") | Some("opera")
-        | Some("vivaldi") => {
+        | Some("vivaldi") | Some("arc") => {
             let bt = match browser.unwrap().to_lowercase().as_str() {
                 "edge" => BrowserType::EdgeChromium,
                 "brave" => BrowserType::Brave,
                 "opera" => BrowserType::Opera,
                 "vivaldi" => BrowserType::Vivaldi,
                 "chromium" => BrowserType::Chromium,
+                "arc" => BrowserType::Arc,
                 _ => BrowserType::Chrome,
             };
             info!("Browser: {} (specified)", bt.display_name());
@@ -352,6 +355,10 @@ fn cmd_extract(
         Some("firefox") => {
             info!("Browser: Firefox (specified)");
             browsers::firefox::extract(input, username)?
+        }
+        Some("safari") => {
+            info!("Browser: Safari (specified)");
+            browsers::safari::extract(input, username)?
         }
         Some("ie") | Some("edge-legacy") | Some("webcache") => {
             info!("Browser: IE/Edge Legacy (specified)");
@@ -366,6 +373,10 @@ fn cmd_extract(
                 info!("Browser: Firefox (auto-detected from filename)");
                 browsers::firefox::extract(input, username)?
             }
+            "History.db" => {
+                info!("Browser: Safari (auto-detected from filename)");
+                browsers::safari::extract(input, username)?
+            }
             "WebCacheV01.dat" => {
                 info!("Browser: IE/Edge Legacy (auto-detected from filename)");
                 browsers::webcache::extract(input, username)?
@@ -376,7 +387,7 @@ fn cmd_extract(
             ),
         },
         Some(other) => anyhow::bail!(
-            "Unknown browser '{}'. Valid: chrome, firefox, ie, edge, brave, opera, vivaldi",
+            "Unknown browser '{}'. Valid: chrome, firefox, safari, ie, edge, brave, opera, vivaldi, arc",
             other
         ),
     };
