@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use forensic_webhistory::browsers::{self, BrowserType, HistoryEntry};
+use forensic_webhistory::carver;
 use forensic_webhistory::output;
 use forensic_webhistory::scanner;
 
@@ -47,6 +48,17 @@ enum Commands {
         user: Option<String>,
     },
 
+    /// Carve deleted/residual browser history from database files
+    Carve {
+        /// Path to browser database file (or directory to scan)
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Output CSV file for recovered entries
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+
     /// Extract history from a specific browser database file
     Extract {
         /// Path to browser database file (History, places.sqlite, WebCacheV01.dat)
@@ -82,6 +94,7 @@ fn main() -> Result<()> {
         Commands::Scan { dir, output, user } => {
             cmd_scan(&dir, &output, user.as_deref(), cli.verbose)
         }
+        Commands::Carve { input, output } => cmd_carve(&input, &output),
         Commands::Extract {
             input,
             output,
@@ -401,6 +414,62 @@ fn cmd_extract(
     } else {
         output::write_csv_stdout(&entries)?
     };
+
+    Ok(())
+}
+
+fn cmd_carve(input: &Path, output: &Path) -> Result<()> {
+    if !input.exists() {
+        anyhow::bail!("Path not found: {}", input.display());
+    }
+
+    let mut all_entries = Vec::new();
+
+    if input.is_dir() {
+        // Scan directory for database files
+        info!("Scanning for browser databases in {}", input.display());
+        let db_names = ["History", "places.sqlite", "History.db"];
+
+        for entry in walkdir::WalkDir::new(input)
+            .follow_links(true)
+            .max_depth(10)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let name = entry
+                .path()
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            if db_names.contains(&name) {
+                info!("  Carving: {}", entry.path().display());
+                match carver::carve(entry.path()) {
+                    Ok(entries) => {
+                        info!("    Recovered {} entries", entries.len());
+                        all_entries.extend(entries);
+                    }
+                    Err(e) => {
+                        warn!("    Failed: {}", e);
+                    }
+                }
+            }
+        }
+    } else {
+        // Single file
+        info!("Carving deleted entries from: {}", input.display());
+        all_entries = carver::carve(input)?;
+    }
+
+    info!(
+        "Total recovered: {} unique deleted entries",
+        all_entries.len()
+    );
+
+    let count = carver::write_carved_csv(&all_entries, output)?;
+    info!("Wrote {} entries to {}", count, output.display());
 
     Ok(())
 }
