@@ -314,8 +314,14 @@ fn extract_urls_from_page(data: &[u8], source_file: &str, source: CarveSource) -
         if i > 0 {
             let prev = data[i - 1];
             // If previous byte is a normal URL character, skip — we're mid-string
-            if prev > 0x20 && prev < 0x7F && prev != b'"' && prev != b'\'' && prev != b'<'
-                && prev != b'>' && prev != b'(' && prev != b')' && prev != b','
+            if (0x21..0x7F).contains(&prev)
+                && prev != b'"'
+                && prev != b'\''
+                && prev != b'<'
+                && prev != b'>'
+                && prev != b'('
+                && prev != b')'
+                && prev != b','
             {
                 i += 1;
                 continue;
@@ -328,7 +334,7 @@ fn extract_urls_from_page(data: &[u8], source_file: &str, source: CarveSource) -
         while end < len {
             let b = data[end];
             // URL characters: printable ASCII except whitespace and common delimiters
-            if b < 0x21 || b > 0x7E || b == b'"' || b == b'\'' || b == b'<' || b == b'>' {
+            if !(0x21..=0x7E).contains(&b) || b == b'"' || b == b'\'' || b == b'<' || b == b'>' {
                 break;
             }
             end += 1;
