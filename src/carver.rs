@@ -672,10 +672,7 @@ mod tests {
     fn test_chrome_time() {
         let dt = chrome_time_to_datetime(13245010621000000);
         assert!(dt.is_some());
-        assert_eq!(
-            dt.unwrap().format("%Y-%m-%d").to_string(),
-            "2020-09-19"
-        );
+        assert_eq!(dt.unwrap().format("%Y-%m-%d").to_string(), "2020-09-19");
     }
 
     #[test]
