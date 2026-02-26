@@ -568,6 +568,49 @@ fn guess_browser_from_url(path: &str) -> String {
     }
 }
 
+/// Produce a natural-language description of a carved browser history entry for semantic indexing.
+fn linearize_carved(entry: &CarvedEntry) -> String {
+    let mut parts = Vec::new();
+
+    // Timestamp
+    if let Some(dt) = entry.visit_time {
+        parts.push(format!("[{}]", dt.format("%Y-%m-%d %H:%M:%S")));
+    } else {
+        parts.push("[Unknown Time]".to_string());
+    }
+
+    // Activity — always "Recovered" since these are carved entries
+    parts.push("Recovered Web Visit".to_string());
+
+    // Browser
+    if !entry.browser_hint.is_empty() {
+        parts.push(format!("in {}", entry.browser_hint));
+    }
+
+    // Title (truncated)
+    if !entry.title.is_empty() {
+        let title = if entry.title.len() > 150 {
+            format!("{}...", &entry.title[..150])
+        } else {
+            entry.title.clone()
+        };
+        parts.push(format!("- \"{}\"", title));
+    }
+
+    // URL (truncated)
+    let url_display = if entry.url.len() > 200 {
+        format!("{}...", &entry.url[..200])
+    } else {
+        entry.url.clone()
+    };
+    parts.push(format!("({})", url_display));
+
+    // Recovery source
+    parts.push(format!("| Carved from {}", entry.source));
+
+    parts.join(" ")
+}
+
 /// Write carved entries to CSV.
 pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<usize> {
     if entries.is_empty() {
@@ -589,9 +632,11 @@ pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<u
         "Browser Hint",
         "Recovery Source",
         "Source File",
+        "NaturalLanguage",
     ])?;
 
     for entry in entries {
+        let nl = linearize_carved(entry);
         wtr.write_record([
             &entry.url,
             &entry.title,
@@ -602,6 +647,7 @@ pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<u
             &entry.browser_hint,
             &entry.source.to_string(),
             &entry.source_file,
+            &nl,
         ])?;
     }
 

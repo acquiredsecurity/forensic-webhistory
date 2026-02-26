@@ -63,3 +63,85 @@ impl BrowserType {
         }
     }
 }
+
+/// Detect the type of web activity from URL, visit type, and title.
+fn detect_activity<'a>(url: &str, visit_type: &str, title: &str) -> &'a str {
+    let url_lower = url.to_lowercase();
+    let title_lower = title.to_lowercase();
+    let vtype_lower = visit_type.to_lowercase();
+
+    // Download detection
+    if vtype_lower == "download" || vtype_lower.contains("download") {
+        return "File Download";
+    }
+
+    // Search detection
+    if url_lower.contains("search?")
+        || url_lower.contains("&q=")
+        || url_lower.contains("?q=")
+        || url_lower.contains("?query=")
+        || url_lower.contains("&query=")
+        || url_lower.contains("/search")
+        || title_lower.contains(" - google search")
+        || title_lower.contains(" - bing")
+        || title_lower.contains(" - search")
+    {
+        return "Web Search";
+    }
+
+    // Typed URL
+    if vtype_lower == "typed" {
+        return "Typed URL";
+    }
+
+    "Web Visit"
+}
+
+/// Produce a natural-language description of a browser history entry for semantic indexing.
+pub fn linearize_entry(entry: &HistoryEntry) -> String {
+    let mut parts = Vec::new();
+
+    // Timestamp
+    parts.push(format!("[{}]", entry.visit_time.format("%Y-%m-%d %H:%M:%S")));
+
+    // Activity type
+    parts.push(
+        detect_activity(&entry.url, &entry.visit_type, &entry.title).to_string(),
+    );
+
+    // Browser
+    parts.push(format!("in {}", entry.web_browser));
+
+    // Title (truncated)
+    if !entry.title.is_empty() {
+        let title = if entry.title.len() > 150 {
+            format!("{}...", &entry.title[..150])
+        } else {
+            entry.title.clone()
+        };
+        parts.push(format!("- \"{}\"", title));
+    }
+
+    // URL (truncated)
+    let url_display = if entry.url.len() > 200 {
+        format!("{}...", &entry.url[..200])
+    } else {
+        entry.url.clone()
+    };
+    parts.push(format!("({})", url_display));
+
+    // Visit type
+    if !entry.visit_type.is_empty() {
+        parts.push(format!("| Type: {}", entry.visit_type));
+    }
+
+    // User / Profile
+    if !entry.user_profile.is_empty() {
+        parts.push(format!("| User: {}", entry.user_profile));
+    }
+    if !entry.browser_profile.is_empty() {
+        parts.push(format!("| Profile: {}", entry.browser_profile));
+    }
+
+    parts.join(" ")
+}

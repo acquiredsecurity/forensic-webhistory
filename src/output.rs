@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::browsers::HistoryEntry;
+use crate::browsers::{linearize_entry, HistoryEntry};
 
-/// NirSoft BrowsingHistoryView CSV column headers.
+/// NirSoft BrowsingHistoryView CSV column headers (extended with NaturalLanguage).
 const HEADERS: &[&str] = &[
     "URL",
     "Title",
@@ -19,6 +19,7 @@ const HEADERS: &[&str] = &[
     "Typed Count",
     "History File",
     "Record ID",
+    "NaturalLanguage",
 ];
 
 /// Write history entries to a CSV file in NirSoft BrowsingHistoryView format.
@@ -42,6 +43,7 @@ pub fn write_csv(entries: &[HistoryEntry], output_path: &Path) -> Result<usize> 
 
     // Write entries
     for entry in entries {
+        let nl = linearize_entry(entry);
         wtr.write_record([
             &entry.url,
             &entry.title,
@@ -57,6 +59,7 @@ pub fn write_csv(entries: &[HistoryEntry], output_path: &Path) -> Result<usize> 
             &entry.typed_count.to_string(),
             &entry.history_file,
             &entry.record_id.to_string(),
+            &nl,
         ])?;
     }
 
@@ -76,6 +79,7 @@ pub fn write_csv_stdout(entries: &[HistoryEntry]) -> Result<usize> {
     wtr.write_record(HEADERS)?;
 
     for entry in entries {
+        let nl = linearize_entry(entry);
         wtr.write_record([
             &entry.url,
             &entry.title,
@@ -91,6 +95,7 @@ pub fn write_csv_stdout(entries: &[HistoryEntry]) -> Result<usize> {
             &entry.typed_count.to_string(),
             &entry.history_file,
             &entry.record_id.to_string(),
+            &nl,
         ])?;
     }
 
