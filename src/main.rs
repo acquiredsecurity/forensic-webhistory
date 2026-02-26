@@ -99,7 +99,10 @@ fn main() -> Result<()> {
 
 fn interactive_menu() -> Result<()> {
     println!();
-    println!("  Forensic Browser History Analyzer v{}", env!("CARGO_PKG_VERSION"));
+    println!(
+        "  Forensic Browser History Analyzer v{}",
+        env!("CARGO_PKG_VERSION")
+    );
     println!();
     println!("  Supported Browsers:");
     println!("    Chrome, Edge Chromium, Brave, Opera, Vivaldi (SQLite)");
@@ -123,8 +126,7 @@ fn interactive_menu() -> Result<()> {
             "1" => {
                 let dir = prompt("  Triage directory path: ")?;
                 let output = prompt("  Output directory path: ")?;
-                let user =
-                    prompt_optional("  Username override (Enter to auto-detect): ")?;
+                let user = prompt_optional("  Username override (Enter to auto-detect): ")?;
 
                 let dir = PathBuf::from(dir.trim());
                 let output = PathBuf::from(output.trim());
@@ -135,11 +137,9 @@ fn interactive_menu() -> Result<()> {
             }
             "2" => {
                 let file = prompt("  Database file path: ")?;
-                let output =
-                    prompt_optional("  Output CSV path (Enter for stdout): ")?;
-                let browser = prompt_optional(
-                    "  Browser type [chrome/firefox/ie] (Enter to auto-detect): ",
-                )?;
+                let output = prompt_optional("  Output CSV path (Enter for stdout): ")?;
+                let browser =
+                    prompt_optional("  Browser type [chrome/firefox/ie] (Enter to auto-detect): ")?;
                 let user = prompt_optional("  Username (Enter to skip): ")?;
 
                 let file = PathBuf::from(file.trim());
@@ -158,25 +158,17 @@ fn interactive_menu() -> Result<()> {
             "3" => {
                 println!();
                 println!("  USAGE:");
-                println!(
-                    "    forensic-webhistory scan -d <triage_dir> -o <output_dir>"
-                );
-                println!(
-                    "    forensic-webhistory extract -i <db_file> -o <output.csv>"
-                );
+                println!("    forensic-webhistory scan -d <triage_dir> -o <output_dir>");
+                println!("    forensic-webhistory extract -i <db_file> -o <output.csv>");
                 println!();
                 println!("  SCAN MODE:");
-                println!(
-                    "    Recursively scans a triage directory (KAPE output, mounted image)"
-                );
+                println!("    Recursively scans a triage directory (KAPE output, mounted image)");
                 println!(
                     "    for browser databases and extracts history from all found artifacts."
                 );
                 println!();
                 println!("  EXTRACT MODE:");
-                println!(
-                    "    Extracts history from a single browser database file."
-                );
+                println!("    Extracts history from a single browser database file.");
                 println!(
                     "    Auto-detects browser from filename (History, places.sqlite, WebCacheV01.dat)."
                 );

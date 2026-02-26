@@ -66,10 +66,10 @@ fn parse_url(text: &str) -> (Option<String>, Option<String>) {
     }
 
     // MSHist container: ":20200918202009: Username@url" or ":20200918202009: Username@:Host: host"
-    if text.starts_with(':') {
+    if let Some(after_first_colon) = text.strip_prefix(':') {
         // Find the second colon (end of date range)
-        if let Some(second_colon) = text[1..].find(':') {
-            let rest = text[second_colon + 2..].trim(); // skip ":daterange: "
+        if let Some(second_colon) = after_first_colon.find(':') {
+            let rest = after_first_colon[second_colon + 1..].trim(); // skip "daterange: "
             if let Some(at_pos) = rest.find('@') {
                 let user = rest[..at_pos].trim().to_string();
                 let url = rest[at_pos + 1..].trim().to_string();

@@ -12,8 +12,7 @@ fn chrome_time_to_datetime(microseconds: i64) -> Option<DateTime<Utc>> {
     if microseconds == 0 {
         return None;
     }
-    let epoch = NaiveDate::from_ymd_opt(1601, 1, 1)?
-        .and_hms_opt(0, 0, 0)?;
+    let epoch = NaiveDate::from_ymd_opt(1601, 1, 1)?.and_hms_opt(0, 0, 0)?;
     let dt = epoch + Duration::microseconds(microseconds);
     Some(DateTime::from_naive_utc_and_offset(dt, Utc))
 }
@@ -90,14 +89,14 @@ pub fn extract(
 
     let rows = stmt.query_map([], |row| {
         Ok((
-            row.get::<_, String>(0)?,          // url
-            row.get::<_, Option<String>>(1)?,   // title
-            row.get::<_, i64>(2)?,              // visit_time
-            row.get::<_, i32>(3)?,              // visit_count
-            row.get::<_, i64>(4)?,              // from_visit
-            row.get::<_, i32>(5)?,              // transition
-            row.get::<_, i32>(6)?,              // typed_count
-            row.get::<_, i64>(7)?,              // id
+            row.get::<_, String>(0)?,         // url
+            row.get::<_, Option<String>>(1)?, // title
+            row.get::<_, i64>(2)?,            // visit_time
+            row.get::<_, i32>(3)?,            // visit_count
+            row.get::<_, i64>(4)?,            // from_visit
+            row.get::<_, i32>(5)?,            // transition
+            row.get::<_, i32>(6)?,            // typed_count
+            row.get::<_, i64>(7)?,            // id
         ))
     })?;
 
