@@ -277,10 +277,7 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
             Ok(entries) => {
                 let label = format!(
                     "{}{}",
-                    artifact
-                        .browser
-                        .display_name()
-                        .replace([' ', '/'], "_"),
+                    artifact.browser.display_name().replace([' ', '/'], "_"),
                     if artifact.profile_name.is_empty() {
                         String::new()
                     } else {
