@@ -143,7 +143,7 @@ fn interactive_menu() -> Result<()> {
                 let user = prompt_optional("  Username (Enter to skip): ")?;
 
                 let file = PathBuf::from(file.trim());
-                let output_path = output.as_ref().map(|s| PathBuf::from(s));
+                let output_path = output.as_ref().map(PathBuf::from);
                 match cmd_extract(
                     &file,
                     output_path.as_deref(),
@@ -280,8 +280,7 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
                     artifact
                         .browser
                         .display_name()
-                        .replace(' ', "_")
-                        .replace('/', "_"),
+                        .replace([' ', '/'], "_"),
                     if artifact.profile_name.is_empty() {
                         String::new()
                     } else {
