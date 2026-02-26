@@ -55,11 +55,11 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
 
     let rows = stmt.query_map([], |row| {
         Ok((
-            row.get::<_, String>(0)?,          // url
-            row.get::<_, Option<String>>(1)?,   // title
-            row.get::<_, f64>(2)?,              // visit_time (Core Data seconds)
-            row.get::<_, i32>(3)?,              // visit_count
-            row.get::<_, i64>(4)?,              // visit id
+            row.get::<_, String>(0)?,         // url
+            row.get::<_, Option<String>>(1)?, // title
+            row.get::<_, f64>(2)?,            // visit_time (Core Data seconds)
+            row.get::<_, i32>(3)?,            // visit_count
+            row.get::<_, i64>(4)?,            // visit id
         ))
     })?;
 

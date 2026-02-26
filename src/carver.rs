@@ -88,7 +88,11 @@ pub fn carve(db_path: &Path) -> Result<Vec<CarvedEntry>> {
         if wal.exists() {
             match carve_wal_file(wal, &db_str) {
                 Ok(carved) => {
-                    info!("  WAL carving ({}): {} candidate entries", wal.display(), carved.len());
+                    info!(
+                        "  WAL carving ({}): {} candidate entries",
+                        wal.display(),
+                        carved.len()
+                    );
                     for e in carved {
                         if seen_urls.insert(e.url.clone()) {
                             entries.push(e);
@@ -141,7 +145,11 @@ fn read_sqlite_header(data: &[u8]) -> Result<SqliteHeader> {
     }
 
     let page_size_raw = u16::from_be_bytes([data[16], data[17]]) as u32;
-    let page_size = if page_size_raw == 1 { 65536 } else { page_size_raw };
+    let page_size = if page_size_raw == 1 {
+        65536
+    } else {
+        page_size_raw
+    };
 
     let freelist_trunk_page = u32::from_be_bytes([data[32], data[33], data[34], data[35]]);
     let freelist_page_count = u32::from_be_bytes([data[36], data[37], data[38], data[39]]);
@@ -169,7 +177,10 @@ fn carve_freelist_pages(db_path: &Path) -> Result<Vec<CarvedEntry>> {
 
     debug!(
         "SQLite: page_size={}, freelist_trunk={}, freelist_count={}, total_pages={}",
-        header.page_size, header.freelist_trunk_page, header.freelist_page_count, header.total_pages
+        header.page_size,
+        header.freelist_trunk_page,
+        header.freelist_page_count,
+        header.total_pages
     );
 
     if header.freelist_trunk_page == 0 || header.freelist_page_count == 0 {
@@ -200,7 +211,11 @@ fn carve_freelist_pages(db_path: &Path) -> Result<Vec<CarvedEntry>> {
         let leaf_count = u32::from_be_bytes([page[4], page[5], page[6], page[7]]);
 
         // Scan the trunk page itself for URL data
-        entries.extend(extract_urls_from_page(page, &db_str, CarveSource::FreelistPage));
+        entries.extend(extract_urls_from_page(
+            page,
+            &db_str,
+            CarveSource::FreelistPage,
+        ));
 
         // Scan each leaf page
         for i in 0..leaf_count.min(((header.page_size - 8) / 4) as u32) {
@@ -218,8 +233,7 @@ fn carve_freelist_pages(db_path: &Path) -> Result<Vec<CarvedEntry>> {
             if leaf_page > 0 && leaf_page <= header.total_pages {
                 let leaf_offset = ((leaf_page - 1) as usize) * (header.page_size as usize);
                 if leaf_offset + (header.page_size as usize) <= data.len() {
-                    let leaf_data =
-                        &data[leaf_offset..leaf_offset + header.page_size as usize];
+                    let leaf_data = &data[leaf_offset..leaf_offset + header.page_size as usize];
                     entries.extend(extract_urls_from_page(
                         leaf_data,
                         &db_str,
@@ -284,12 +298,7 @@ fn carve_raw_urls(db_path: &Path) -> Result<Vec<CarvedEntry>> {
 /// Looks for common URL prefixes and extracts the full string.
 fn extract_urls_from_page(data: &[u8], source_file: &str, source: CarveSource) -> Vec<CarvedEntry> {
     let mut entries = Vec::new();
-    let prefixes: &[&[u8]] = &[
-        b"https://",
-        b"http://",
-        b"ftp://",
-        b"file:///",
-    ];
+    let prefixes: &[&[u8]] = &[b"https://", b"http://", b"ftp://", b"file:///"];
 
     let len = data.len();
     let mut i = 0;
@@ -386,7 +395,8 @@ fn extract_urls_from_page(data: &[u8], source_file: &str, source: CarveSource) -
 /// Check if a URL looks plausible (not just a fragment or garbage).
 fn is_plausible_url(url: &str) -> bool {
     // Must have a domain-like component after the scheme
-    if let Some(rest) = url.strip_prefix("http://")
+    if let Some(rest) = url
+        .strip_prefix("http://")
         .or_else(|| url.strip_prefix("https://"))
         .or_else(|| url.strip_prefix("ftp://"))
     {
@@ -448,8 +458,11 @@ fn is_plausible_title(s: &str) -> bool {
         return false;
     }
     // Reject URL-like strings
-    if s.starts_with("http") || s.starts_with("ftp:") || s.starts_with("file:")
-        || s.starts_with("://") || s.starts_with("ttp://")
+    if s.starts_with("http")
+        || s.starts_with("ftp:")
+        || s.starts_with("file:")
+        || s.starts_with("://")
+        || s.starts_with("ttp://")
     {
         return false;
     }
@@ -458,7 +471,10 @@ fn is_plausible_title(s: &str) -> bool {
         return false;
     }
     // Reject strings that are mostly non-alphabetic (likely binary garbage)
-    let alpha_count = s.chars().filter(|c| c.is_alphabetic() || c.is_whitespace()).count();
+    let alpha_count = s
+        .chars()
+        .filter(|c| c.is_alphabetic() || c.is_whitespace())
+        .count();
     let ratio = alpha_count as f64 / s.len() as f64;
     if ratio < 0.5 {
         return false;

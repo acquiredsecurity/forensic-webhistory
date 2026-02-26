@@ -102,12 +102,13 @@ pub fn linearize_entry(entry: &HistoryEntry) -> String {
     let mut parts = Vec::new();
 
     // Timestamp
-    parts.push(format!("[{}]", entry.visit_time.format("%Y-%m-%d %H:%M:%S")));
+    parts.push(format!(
+        "[{}]",
+        entry.visit_time.format("%Y-%m-%d %H:%M:%S")
+    ));
 
     // Activity type
-    parts.push(
-        detect_activity(&entry.url, &entry.visit_type, &entry.title).to_string(),
-    );
+    parts.push(detect_activity(&entry.url, &entry.visit_type, &entry.title).to_string());
 
     // Browser
     parts.push(format!("in {}", entry.web_browser));
