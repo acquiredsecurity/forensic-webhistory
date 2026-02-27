@@ -1,7 +1,7 @@
 # Forensic Browser History Analyzer
 
 ## Project Overview
-Cross-platform browser history forensic extractor written in Rust. Extracts browsing history from Chrome, Firefox, IE/Edge (and variants like Brave, Opera, Vivaldi) into NirSoft BrowsingHistoryView-compatible CSV format.
+Cross-platform browser history forensic extractor written in Rust. Extracts browsing history from Chrome, Firefox, IE/Edge (and variants like Brave, Opera, Vivaldi) into CSV format.
 
 ## Architecture
 - `src/main.rs` — CLI entry point (clap subcommands: `scan` and `extract`)
@@ -41,6 +41,6 @@ forensic-webhistory extract -i /path/to/WebCacheV01.dat -o output.csv
 ```
 
 ## Output Format
-NirSoft BrowsingHistoryView-compatible CSV with columns:
+CSV with columns:
 URL, Title, Visit Time, Visit Count, Visited From, Visit Type, Visit Duration,
 Web Browser, User Profile, Browser Profile, URL Length, Typed Count, History File, Record ID
