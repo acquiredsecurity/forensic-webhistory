@@ -101,7 +101,7 @@ RUST_LOG=debug forensic-webhistory scan -d /path/to/triage/ -o /output/
 
 ### Live Browser History CSV
 
-Outputs CSV files compatible with NirSoft BrowsingHistoryView format:
+Outputs CSV files:
 
 | Column | Description |
 |--------|-------------|
