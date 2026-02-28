@@ -1,20 +1,21 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
+use std::collections::HashSet;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use forensic_webhistory::browsers::{self, BrowserType, HistoryEntry};
+use forensic_webhistory::browsers::{self, ArtifactType, BrowserType, HistoryEntry};
 use forensic_webhistory::carver;
 use forensic_webhistory::output;
 use forensic_webhistory::scanner;
 
 #[derive(Parser)]
 #[command(
-    name = "forensic-webhistory",
-    about = "Forensic Browser History Analyzer",
-    long_about = "Extract browsing history from Chrome, Firefox, IE/Edge, Brave, Opera, and Vivaldi.\n\
-                  Outputs NirSoft BrowsingHistoryView-compatible CSV format.\n\n\
+    name = "webx",
+    about = "WebX — Forensic Browser Artifact Analyzer",
+    long_about = "Extract browsing history, downloads, cookies, autofill, bookmarks, login metadata,\n\
+                  keyword searches, and extensions from Chrome, Firefox, IE/Edge, Brave, Opera, Vivaldi, Arc, and Safari.\n\n\
                   Set RUST_LOG=debug for verbose logging.",
     version
 )]
@@ -33,7 +34,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Scan a triage directory for all browser artifacts and extract history
+    /// Scan a triage directory for all browser artifacts and extract everything
     Scan {
         /// Path to triage directory (KAPE output, mounted image, etc.)
         #[arg(short, long)]
@@ -46,6 +47,15 @@ enum Commands {
         /// Override username (auto-detected from path if omitted)
         #[arg(short, long)]
         user: Option<String>,
+
+        /// Also write Parquet output alongside CSV
+        #[arg(long = "out")]
+        parquet_dir: Option<PathBuf>,
+
+        /// Artifact types to extract (comma-separated). Default: all.
+        /// Options: history,downloads,keywords,cookies,autofill,bookmarks,logins,extensions
+        #[arg(long, value_delimiter = ',')]
+        artifacts: Option<Vec<String>>,
     },
 
     /// Carve deleted/residual browser history from database files
@@ -59,23 +69,27 @@ enum Commands {
         output: PathBuf,
     },
 
-    /// Extract history from a specific browser database file
+    /// Extract from a specific browser database file
     Extract {
-        /// Path to browser database file (History, places.sqlite, WebCacheV01.dat)
+        /// Path to browser database file (History, places.sqlite, WebCacheV01.dat, Cookies, etc.)
         #[arg(short, long)]
         input: PathBuf,
 
-        /// Output CSV file path (omit to write to stdout)
+        /// Output CSV file path (omit to write to stdout for history)
         #[arg(short, long)]
         output: Option<PathBuf>,
 
-        /// Browser type: chrome, firefox, ie (auto-detected if omitted)
+        /// Browser type: chrome, firefox, ie, safari (auto-detected if omitted)
         #[arg(short, long)]
         browser: Option<String>,
 
         /// Username to include in output
         #[arg(short, long)]
         user: Option<String>,
+
+        /// Also write Parquet output alongside CSV
+        #[arg(long = "out")]
+        parquet_dir: Option<PathBuf>,
     },
 }
 
@@ -91,29 +105,74 @@ fn main() -> Result<()> {
     }
 
     match cli.command.unwrap() {
-        Commands::Scan { dir, output, user } => {
-            cmd_scan(&dir, &output, user.as_deref(), cli.verbose)
-        }
+        Commands::Scan {
+            dir,
+            output,
+            user,
+            parquet_dir,
+            artifacts,
+        } => cmd_scan(
+            &dir,
+            &output,
+            user.as_deref(),
+            parquet_dir.as_deref(),
+            &parse_artifact_filter(&artifacts),
+        ),
         Commands::Carve { input, output } => cmd_carve(&input, &output),
         Commands::Extract {
             input,
             output,
             browser,
             user,
+            parquet_dir,
         } => cmd_extract(
             &input,
             output.as_deref(),
             browser.as_deref(),
             user.as_deref(),
-            cli.verbose,
+            parquet_dir.as_deref(),
         ),
+    }
+}
+
+fn parse_artifact_filter(artifacts: &Option<Vec<String>>) -> HashSet<ArtifactType> {
+    match artifacts {
+        None => vec![
+            ArtifactType::History,
+            ArtifactType::Downloads,
+            ArtifactType::KeywordSearches,
+            ArtifactType::Cookies,
+            ArtifactType::Autofill,
+            ArtifactType::Bookmarks,
+            ArtifactType::LoginData,
+            ArtifactType::Extensions,
+        ]
+        .into_iter()
+        .collect(),
+        Some(list) => list
+            .iter()
+            .filter_map(|s| match s.to_lowercase().as_str() {
+                "history" => Some(ArtifactType::History),
+                "downloads" => Some(ArtifactType::Downloads),
+                "keywords" | "searches" => Some(ArtifactType::KeywordSearches),
+                "cookies" => Some(ArtifactType::Cookies),
+                "autofill" | "forms" => Some(ArtifactType::Autofill),
+                "bookmarks" => Some(ArtifactType::Bookmarks),
+                "logins" | "passwords" | "login_data" => Some(ArtifactType::LoginData),
+                "extensions" | "addons" => Some(ArtifactType::Extensions),
+                _ => {
+                    warn!("Unknown artifact type: {}", s);
+                    None
+                }
+            })
+            .collect(),
     }
 }
 
 fn interactive_menu() -> Result<()> {
     println!();
     println!(
-        "  Forensic Browser History Analyzer v{}",
+        "  WebX — Forensic Browser Artifact Analyzer v{}",
         env!("CARGO_PKG_VERSION")
     );
     println!();
@@ -123,9 +182,12 @@ fn interactive_menu() -> Result<()> {
     println!("    Safari (History.db — macOS)");
     println!("    Internet Explorer / Edge Legacy (WebCacheV01.dat ESE)");
     println!();
+    println!("  Artifact Types (all extracted by default):");
+    println!("    History, Downloads, Keywords, Cookies, Autofill, Bookmarks, Logins, Extensions");
+    println!();
 
     loop {
-        println!("  [1] Scan triage directory (auto-detect)");
+        println!("  [1] Scan triage directory (auto-detect all artifacts)");
         println!("  [2] Extract from specific database file");
         println!("  [3] Show help");
         println!("  [0] Exit");
@@ -144,7 +206,8 @@ fn interactive_menu() -> Result<()> {
 
                 let dir = PathBuf::from(dir.trim());
                 let output = PathBuf::from(output.trim());
-                match cmd_scan(&dir, &output, user.as_deref(), true) {
+                let all = parse_artifact_filter(&None);
+                match cmd_scan(&dir, &output, user.as_deref(), None, &all) {
                     Ok(()) => println!("\n  Done!\n"),
                     Err(e) => println!("\n  Error: {e}\n"),
                 }
@@ -163,7 +226,7 @@ fn interactive_menu() -> Result<()> {
                     output_path.as_deref(),
                     browser.as_deref(),
                     user.as_deref(),
-                    true,
+                    None,
                 ) {
                     Ok(()) => println!("\n  Done!\n"),
                     Err(e) => println!("\n  Error: {e}\n"),
@@ -172,27 +235,14 @@ fn interactive_menu() -> Result<()> {
             "3" => {
                 println!();
                 println!("  USAGE:");
-                println!("    forensic-webhistory scan -d <triage_dir> -o <output_dir>");
-                println!("    forensic-webhistory extract -i <db_file> -o <output.csv>");
+                println!("    webx scan -d <triage_dir> -o <output_dir>");
+                println!("    webx scan -d <triage_dir> -o <output_dir> --artifacts history,downloads,cookies");
+                println!("    webx extract -i <db_file> -o <output.csv>");
+                println!("    webx carve -i <db_file> -o <output.csv>");
                 println!();
-                println!("  SCAN MODE:");
-                println!("    Recursively scans a triage directory (KAPE output, mounted image)");
-                println!(
-                    "    for browser databases and extracts history from all found artifacts."
-                );
-                println!();
-                println!("  EXTRACT MODE:");
-                println!("    Extracts history from a single browser database file.");
-                println!(
-                    "    Auto-detects browser from filename (History, places.sqlite, WebCacheV01.dat)."
-                );
-                println!();
-                println!("  OUTPUT FORMAT:");
-                println!("    NirSoft BrowsingHistoryView-compatible CSV.");
-                println!("    All timestamps in UTC.");
-                println!();
-                println!("  LOGGING:");
-                println!("    RUST_LOG=debug forensic-webhistory scan ...");
+    println!("  ARTIFACT TYPES (all extracted by default):");
+                println!("    history, downloads, keywords, cookies, autofill, bookmarks, logins, extensions");
+                println!("    Use --artifacts to limit, e.g. --artifacts history,downloads");
                 println!();
             }
             "0" | "q" | "quit" | "exit" => {
@@ -231,7 +281,13 @@ fn prompt_optional(message: &str) -> Result<Option<String>> {
     }
 }
 
-fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -> Result<()> {
+fn cmd_scan(
+    dir: &Path,
+    output_dir: &Path,
+    user: Option<&str>,
+    parquet_dir: Option<&Path>,
+    artifact_filter: &HashSet<ArtifactType>,
+) -> Result<()> {
     if !dir.exists() {
         anyhow::bail!("Directory not found: {}", dir.display());
     }
@@ -245,18 +301,16 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
         return Ok(());
     }
 
-    info!("Found {} browser artifact(s):", artifacts.len());
+    // Count by type
+    let mut type_counts = std::collections::HashMap::new();
     for a in &artifacts {
-        info!(
-            "  {} — {} [{}]",
-            a.browser.display_name(),
-            a.profile_name,
-            if a.username.is_empty() {
-                "unknown user"
-            } else {
-                &a.username
-            }
-        );
+        *type_counts
+            .entry(a.artifact_type.display_name())
+            .or_insert(0usize) += 1;
+    }
+    info!("Found {} artifact(s):", artifacts.len());
+    for (atype, count) in &type_counts {
+        info!("  {} x {}", count, atype);
     }
 
     std::fs::create_dir_all(output_dir).with_context(|| {
@@ -269,64 +323,209 @@ fn cmd_scan(dir: &Path, output_dir: &Path, user: Option<&str>, _verbose: bool) -
     let mut total = 0usize;
     let mut errors = 0usize;
 
-    for (idx, artifact) in artifacts.iter().enumerate() {
+    for artifact in &artifacts {
+        if !artifact_filter.contains(&artifact.artifact_type) {
+            continue;
+        }
+
         let username = user.unwrap_or(&artifact.username);
         let db_path = PathBuf::from(&artifact.db_path);
-
-        debug!(
-            "Processing artifact {}/{}: {} at {}",
-            idx + 1,
-            artifacts.len(),
-            artifact.browser.display_name(),
-            artifact.db_path
+        let label = format!(
+            "{}_{}_{}{}",
+            artifact.browser.display_name().replace([' ', '/'], "_"),
+            artifact.artifact_type.file_suffix(),
+            username.replace([' ', '/', '\\'], "_"),
+            if artifact.profile_name.is_empty() {
+                String::new()
+            } else {
+                format!("_{}", artifact.profile_name)
+            }
         );
 
-        let entries = match artifact.browser {
-            BrowserType::InternetExplorer => browsers::webcache::extract(&db_path, username),
-            BrowserType::Firefox => browsers::firefox::extract(&db_path, username),
-            BrowserType::Safari => browsers::safari::extract(&db_path, username),
-            _ => browsers::chrome::extract(&db_path, username, Some(artifact.browser)),
-        };
-
-        match entries {
-            Ok(entries) => {
-                let label = format!(
-                    "{}{}",
-                    artifact.browser.display_name().replace([' ', '/'], "_"),
-                    if artifact.profile_name.is_empty() {
-                        String::new()
-                    } else {
-                        format!("_{}", artifact.profile_name)
+        match artifact.artifact_type {
+            ArtifactType::History => {
+                let entries = match artifact.browser {
+                    BrowserType::InternetExplorer => {
+                        browsers::webcache::extract(&db_path, username)
                     }
-                );
-                let out_file = output_dir.join(format!("{label}.csv"));
-                let count = output::write_csv(&entries, &out_file)?;
-                info!(
-                    "  [{}/{}] {} — {} entries -> {}",
-                    idx + 1,
-                    artifacts.len(),
-                    artifact.browser.display_name(),
-                    count,
-                    out_file.display()
-                );
-                total += count;
+                    BrowserType::Firefox => browsers::firefox::extract(&db_path, username),
+                    BrowserType::Safari => browsers::safari::extract(&db_path, username),
+                    _ => browsers::chrome::extract(&db_path, username, Some(artifact.browser)),
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_parquet(&entries, &pq_file)?;
+                        }
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
             }
-            Err(e) => {
-                error!(
-                    "  [{}/{}] {} — FAILED: {}",
-                    idx + 1,
-                    artifacts.len(),
-                    artifact.browser.display_name(),
-                    e
-                );
-                errors += 1;
+            ArtifactType::Downloads => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_downloads::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_downloads::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_downloads_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_downloads_parquet(&entries, &pq_file)?;
+                        }
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::KeywordSearches => {
+                if !artifact.browser.is_chromium() {
+                    continue;
+                }
+                match browsers::chrome_keywords::extract(
+                    &db_path,
+                    username,
+                    Some(artifact.browser),
+                ) {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_keywords_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::Cookies => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_cookies::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_cookies::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_cookies_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::Autofill => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_autofill::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_autofill::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_autofill_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::Bookmarks => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_bookmarks::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_bookmarks::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_bookmarks_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::LoginData => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_logins::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_logins::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_logins_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
+            }
+            ArtifactType::Extensions => {
+                let entries = if artifact.browser.is_chromium() {
+                    browsers::chrome_extensions::extract(&db_path, username, Some(artifact.browser))
+                } else if artifact.browser == BrowserType::Firefox {
+                    browsers::firefox_extensions::extract(&db_path, username)
+                } else {
+                    continue;
+                };
+                match entries {
+                    Ok(entries) => {
+                        let out_file = output_dir.join(format!("{label}.csv"));
+                        let count = output::write_extensions_csv(&entries, &out_file)?;
+                        info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        total += count;
+                    }
+                    Err(e) => {
+                        error!("  {} — FAILED: {}", label, e);
+                        errors += 1;
+                    }
+                }
             }
         }
     }
 
     info!("");
     info!(
-        "Complete: {} entries extracted from {} artifact(s) ({} errors)",
+        "Complete: {} total entries extracted from {} artifact(s) ({} errors)",
         total,
         artifacts.len(),
         errors
@@ -339,7 +538,7 @@ fn cmd_extract(
     output: Option<&Path>,
     browser: Option<&str>,
     user: Option<&str>,
-    _verbose: bool,
+    parquet_dir: Option<&Path>,
 ) -> Result<()> {
     if !input.exists() {
         anyhow::bail!("File not found: {}", input.display());
@@ -415,6 +614,16 @@ fn cmd_extract(
         output::write_csv_stdout(&entries)?
     };
 
+    if let Some(pq_dir) = parquet_dir {
+        let stem = input
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("webhistory");
+        let pq_file = pq_dir.join(format!("{stem}.parquet"));
+        output::write_parquet(&entries, &pq_file)?;
+        info!("Parquet: {}", pq_file.display());
+    }
+
     Ok(())
 }
 
@@ -426,7 +635,6 @@ fn cmd_carve(input: &Path, output: &Path) -> Result<()> {
     let mut all_entries = Vec::new();
 
     if input.is_dir() {
-        // Scan directory for database files
         info!("Scanning for browser databases in {}", input.display());
         let db_names = ["History", "places.sqlite", "History.db"];
 
@@ -458,7 +666,6 @@ fn cmd_carve(input: &Path, output: &Path) -> Result<()> {
             }
         }
     } else {
-        // Single file
         info!("Carving deleted entries from: {}", input.display());
         all_entries = carver::carve(input)?;
     }

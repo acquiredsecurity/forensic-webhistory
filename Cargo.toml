@@ -17,3 +17,7 @@ anyhow = "1"
 tempfile = "3"
 log = "0.4"
 env_logger = "0.11"
+arrow = { version = "54", default-features = false, features = ["prettyprint"] }
+parquet = { version = "54", default-features = false, features = ["arrow", "snap"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
