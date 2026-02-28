@@ -1,6 +1,6 @@
-```
-WebX — FORENSIC BROWSER ARTIFACT ANALYZER
-```
+<p align="center">
+  <img src="logo.webp" alt="WebX Logo" width="300">
+</p>
 
 # WebX — Forensic Browser Artifact Analyzer
 
