@@ -76,9 +76,11 @@ pub fn unix_millis_to_datetime(millis: i64) -> Option<DateTime<Utc>> {
 }
 
 /// Truncate a string to max length, appending "..." if truncated.
+/// Uses char boundaries to avoid panicking on multi-byte characters (e.g. emojis).
 pub fn truncate_str(s: &str, max: usize) -> String {
     if s.len() > max {
-        format!("{}...", &s[..max])
+        let end = s.floor_char_boundary(max);
+        format!("{}...", &s[..end])
     } else {
         s.to_string()
     }

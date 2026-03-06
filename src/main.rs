@@ -30,6 +30,11 @@ struct Cli {
     /// Verbose output
     #[arg(short, long, global = true)]
     verbose: bool,
+
+    /// Date format for CSV output. Use "iso" for "%Y-%m-%d %H:%M:%S",
+    /// or provide a custom strftime format string. Default: "%m/%d/%Y %I:%M:%S %p"
+    #[arg(long, global = true, default_value = "%m/%d/%Y %I:%M:%S %p")]
+    date_format: String,
 }
 
 #[derive(Subcommand)]
@@ -93,15 +98,23 @@ enum Commands {
     },
 }
 
+fn resolve_date_format(fmt: &str) -> &str {
+    match fmt.to_lowercase().as_str() {
+        "iso" | "iso8601" => "%Y-%m-%d %H:%M:%S",
+        _ => fmt,
+    }
+}
+
 fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format_timestamp(None)
         .init();
 
     let cli = Cli::parse();
+    let date_fmt = resolve_date_format(&cli.date_format);
 
     if cli.interactive || cli.command.is_none() {
-        return interactive_menu();
+        return interactive_menu(date_fmt);
     }
 
     match cli.command.unwrap() {
@@ -117,8 +130,9 @@ fn main() -> Result<()> {
             user.as_deref(),
             parquet_dir.as_deref(),
             &parse_artifact_filter(&artifacts),
+            date_fmt,
         ),
-        Commands::Carve { input, output } => cmd_carve(&input, &output),
+        Commands::Carve { input, output } => cmd_carve(&input, &output, date_fmt),
         Commands::Extract {
             input,
             output,
@@ -131,6 +145,7 @@ fn main() -> Result<()> {
             browser.as_deref(),
             user.as_deref(),
             parquet_dir.as_deref(),
+            date_fmt,
         ),
     }
 }
@@ -169,7 +184,7 @@ fn parse_artifact_filter(artifacts: &Option<Vec<String>>) -> HashSet<ArtifactTyp
     }
 }
 
-fn interactive_menu() -> Result<()> {
+fn interactive_menu(date_fmt: &str) -> Result<()> {
     println!();
     println!(
         "  WebX — Forensic Browser Artifact Analyzer v{}",
@@ -207,7 +222,7 @@ fn interactive_menu() -> Result<()> {
                 let dir = PathBuf::from(dir.trim());
                 let output = PathBuf::from(output.trim());
                 let all = parse_artifact_filter(&None);
-                match cmd_scan(&dir, &output, user.as_deref(), None, &all) {
+                match cmd_scan(&dir, &output, user.as_deref(), None, &all, date_fmt) {
                     Ok(()) => println!("\n  Done!\n"),
                     Err(e) => println!("\n  Error: {e}\n"),
                 }
@@ -227,6 +242,7 @@ fn interactive_menu() -> Result<()> {
                     browser.as_deref(),
                     user.as_deref(),
                     None,
+                    date_fmt,
                 ) {
                     Ok(()) => println!("\n  Done!\n"),
                     Err(e) => println!("\n  Error: {e}\n"),
@@ -287,6 +303,7 @@ fn cmd_scan(
     user: Option<&str>,
     parquet_dir: Option<&Path>,
     artifact_filter: &HashSet<ArtifactType>,
+    date_fmt: &str,
 ) -> Result<()> {
     if !dir.exists() {
         anyhow::bail!("Directory not found: {}", dir.display());
@@ -355,7 +372,7 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_csv(&entries, &out_file)?;
+                        let count = output::write_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
                         if let Some(pq_dir) = parquet_dir {
                             let pq_file = pq_dir.join(format!("{label}.parquet"));
@@ -380,7 +397,7 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_downloads_csv(&entries, &out_file)?;
+                        let count = output::write_downloads_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
                         if let Some(pq_dir) = parquet_dir {
                             let pq_file = pq_dir.join(format!("{label}.parquet"));
@@ -405,8 +422,12 @@ fn cmd_scan(
                 ) {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_keywords_csv(&entries, &out_file)?;
+                        let count = output::write_keywords_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_keywords_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -426,8 +447,12 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_cookies_csv(&entries, &out_file)?;
+                        let count = output::write_cookies_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_cookies_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -447,8 +472,12 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_autofill_csv(&entries, &out_file)?;
+                        let count = output::write_autofill_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_autofill_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -468,8 +497,12 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_bookmarks_csv(&entries, &out_file)?;
+                        let count = output::write_bookmarks_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_bookmarks_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -489,8 +522,12 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_logins_csv(&entries, &out_file)?;
+                        let count = output::write_logins_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_logins_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -510,8 +547,12 @@ fn cmd_scan(
                 match entries {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
-                        let count = output::write_extensions_csv(&entries, &out_file)?;
+                        let count = output::write_extensions_csv(&entries, &out_file, date_fmt)?;
                         info!("  {} — {} entries -> {}", label, count, out_file.display());
+                        if let Some(pq_dir) = parquet_dir {
+                            let pq_file = pq_dir.join(format!("{label}.parquet"));
+                            output::write_extensions_parquet(&entries, &pq_file)?;
+                        }
                         total += count;
                     }
                     Err(e) => {
@@ -539,6 +580,7 @@ fn cmd_extract(
     browser: Option<&str>,
     user: Option<&str>,
     parquet_dir: Option<&Path>,
+    date_fmt: &str,
 ) -> Result<()> {
     if !input.exists() {
         anyhow::bail!("File not found: {}", input.display());
@@ -607,11 +649,11 @@ fn cmd_extract(
     info!("Extracted {} history entries", entries.len());
 
     let _count = if let Some(out_path) = output {
-        let c = output::write_csv(&entries, out_path)?;
+        let c = output::write_csv(&entries, out_path, date_fmt)?;
         info!("Wrote {} entries to {}", c, out_path.display());
         c
     } else {
-        output::write_csv_stdout(&entries)?
+        output::write_csv_stdout(&entries, date_fmt)?
     };
 
     if let Some(pq_dir) = parquet_dir {
@@ -627,7 +669,7 @@ fn cmd_extract(
     Ok(())
 }
 
-fn cmd_carve(input: &Path, output: &Path) -> Result<()> {
+fn cmd_carve(input: &Path, output: &Path, date_fmt: &str) -> Result<()> {
     if !input.exists() {
         anyhow::bail!("Path not found: {}", input.display());
     }
@@ -675,7 +717,7 @@ fn cmd_carve(input: &Path, output: &Path) -> Result<()> {
         all_entries.len()
     );
 
-    let count = carver::write_carved_csv(&all_entries, output)?;
+    let count = carver::write_carved_csv(&all_entries, output, date_fmt)?;
     info!("Wrote {} entries to {}", count, output.display());
 
     Ok(())

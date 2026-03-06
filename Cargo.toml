@@ -1,6 +1,6 @@
 [package]
 name = "forensic-webhistory"
-version = "1.0.0"
+version = "2.1.0"
 edition = "2021"
 description = "Forensic Browser History Analyzer — Cross-platform extractor for Chrome, Firefox, Safari, IE/Edge, Brave, Arc, Opera, Vivaldi"
 license = "MIT"

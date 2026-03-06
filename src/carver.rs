@@ -611,21 +611,11 @@ fn linearize_carved(entry: &CarvedEntry) -> String {
 
     // Title (truncated)
     if !entry.title.is_empty() {
-        let title = if entry.title.len() > 150 {
-            format!("{}...", &entry.title[..150])
-        } else {
-            entry.title.clone()
-        };
-        parts.push(format!("- \"{}\"", title));
+        parts.push(format!("- \"{}\"", crate::browsers::truncate_str(&entry.title, 150)));
     }
 
     // URL (truncated)
-    let url_display = if entry.url.len() > 200 {
-        format!("{}...", &entry.url[..200])
-    } else {
-        entry.url.clone()
-    };
-    parts.push(format!("({})", url_display));
+    parts.push(format!("({})", crate::browsers::truncate_str(&entry.url, 200)));
 
     // Recovery source
     parts.push(format!("| Carved from {}", entry.source));
@@ -634,7 +624,7 @@ fn linearize_carved(entry: &CarvedEntry) -> String {
 }
 
 /// Write carved entries to CSV.
-pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<usize> {
+pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path, date_fmt: &str) -> Result<usize> {
     if entries.is_empty() {
         return Ok(0);
     }
@@ -648,9 +638,9 @@ pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<u
     let mut wtr = csv::Writer::from_writer(file);
 
     wtr.write_record([
+        "Visit Time",
         "URL",
         "Title",
-        "Visit Time",
         "Browser Hint",
         "Recovery Source",
         "Source File",
@@ -660,12 +650,12 @@ pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path) -> Result<u
     for entry in entries {
         let nl = linearize_carved(entry);
         wtr.write_record([
-            &entry.url,
-            &entry.title,
             &entry
                 .visit_time
-                .map(|dt| dt.format("%m/%d/%Y %I:%M:%S %p").to_string())
+                .map(|dt| dt.format(date_fmt).to_string())
                 .unwrap_or_default(),
+            &entry.url,
+            &entry.title,
             &entry.browser_hint,
             &entry.source.to_string(),
             &entry.source_file,

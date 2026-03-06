@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.webp" alt="WebX Logo" width="100%">
+  <img src="logo.webp" alt="WebX Logo" width="50%">
 </p>
 
 # WebX — Forensic Browser Artifact Analyzer

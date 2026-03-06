@@ -244,7 +244,7 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
     entries.retain(|e| {
         let key = (
             e.url.clone(),
-            e.visit_time.format("%m/%d/%Y %I:%M:%S %p").to_string(),
+            e.visit_time.format("%Y-%m-%d %H:%M:%S").to_string(),
         );
         seen.insert(key)
     });
