@@ -15,9 +15,7 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<AutofillEntry>> {
         .with_context(|| format!("Failed to open database: {}", db_str))?;
 
     let table_exists: bool = conn
-        .prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='moz_formhistory'",
-        )?
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='moz_formhistory'")?
         .exists([])?;
     if !table_exists {
         return Ok(Vec::new());

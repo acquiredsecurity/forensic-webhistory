@@ -24,9 +24,8 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<BookmarkEntry>> {
     }
 
     // Build folder lookup: id -> (title, parent_id) for type=2 (folders)
-    let mut folder_stmt = conn.prepare(
-        "SELECT id, title, parent FROM moz_bookmarks WHERE type = 2",
-    )?;
+    let mut folder_stmt =
+        conn.prepare("SELECT id, title, parent FROM moz_bookmarks WHERE type = 2")?;
     let folder_rows = folder_stmt.query_map([], |row| {
         Ok((
             row.get::<_, i64>(0)?,

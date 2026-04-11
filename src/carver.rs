@@ -611,11 +611,17 @@ fn linearize_carved(entry: &CarvedEntry) -> String {
 
     // Title (truncated)
     if !entry.title.is_empty() {
-        parts.push(format!("- \"{}\"", crate::browsers::truncate_str(&entry.title, 150)));
+        parts.push(format!(
+            "- \"{}\"",
+            crate::browsers::truncate_str(&entry.title, 150)
+        ));
     }
 
     // URL (truncated)
-    parts.push(format!("({})", crate::browsers::truncate_str(&entry.url, 200)));
+    parts.push(format!(
+        "({})",
+        crate::browsers::truncate_str(&entry.url, 200)
+    ));
 
     // Recovery source
     parts.push(format!("| Carved from {}", entry.source));
@@ -624,7 +630,11 @@ fn linearize_carved(entry: &CarvedEntry) -> String {
 }
 
 /// Write carved entries to CSV.
-pub fn write_carved_csv(entries: &[CarvedEntry], output_path: &Path, date_fmt: &str) -> Result<usize> {
+pub fn write_carved_csv(
+    entries: &[CarvedEntry],
+    output_path: &Path,
+    date_fmt: &str,
+) -> Result<usize> {
     if entries.is_empty() {
         return Ok(0);
     }

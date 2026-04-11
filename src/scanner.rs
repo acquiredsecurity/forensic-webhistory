@@ -63,9 +63,7 @@ pub fn scan(triage_path: &Path) -> Vec<BrowserArtifact> {
                 });
             }
 
-            "places.sqlite"
-                if path_lower.contains("firefox") || path_lower.contains("mozilla") =>
-            {
+            "places.sqlite" if path_lower.contains("firefox") || path_lower.contains("mozilla") => {
                 artifacts.push(BrowserArtifact {
                     browser: BrowserType::Firefox,
                     artifact_type: ArtifactType::History,
@@ -155,9 +153,7 @@ pub fn scan(triage_path: &Path) -> Vec<BrowserArtifact> {
                 });
             }
 
-            "logins.json"
-                if path_lower.contains("firefox") || path_lower.contains("mozilla") =>
-            {
+            "logins.json" if path_lower.contains("firefox") || path_lower.contains("mozilla") => {
                 artifacts.push(BrowserArtifact {
                     browser: BrowserType::Firefox,
                     artifact_type: ArtifactType::LoginData,
