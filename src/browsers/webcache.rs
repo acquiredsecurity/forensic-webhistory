@@ -2,9 +2,29 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use libesedb::EseDb;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::{BrowserType, HistoryEntry};
+
+/// Normalize an ESE database path before handing it to libesedb.
+///
+/// The Windows backend of libesedb cannot handle paths that mix forward
+/// and backward slashes (e.g. `"F:/triage/C\Users\bob\..."` — which is
+/// exactly what `walkdir` produces when the caller supplies a
+/// forward-slash `--dir` on Windows). The failure surfaces as a
+/// `libesedb_file_open: unable to open file` error, but the underlying
+/// cause is libesedb prepending the cwd to a path it interprets as
+/// relative, producing a Windows-invalid mixed-slash string like
+/// `\\?\F:\/triage/C\Users\bob\...`.
+///
+/// `std::fs::canonicalize` returns a clean extended-length `\\?\` path
+/// with all backslashes, which libesedb handles correctly. If
+/// canonicalization fails (file doesn't exist, permission denied,
+/// etc.) we return the original path so the eventual error message
+/// still points at what the caller asked for.
+fn normalize_ese_path(db_path: &Path) -> PathBuf {
+    std::fs::canonicalize(db_path).unwrap_or_else(|_| db_path.to_path_buf())
+}
 
 /// Parse a datetime string produced by libesedb Value::to_string().
 /// The library formats FILETIME values as human-readable strings.
@@ -98,8 +118,11 @@ fn parse_url(text: &str) -> (Option<String>, Option<String>) {
 pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
     let db_str = db_path.to_string_lossy().to_string();
 
-    let db =
-        EseDb::open(db_path).with_context(|| format!("Failed to open ESE database: {}", db_str))?;
+    // See `normalize_ese_path` for why this is required on Windows.
+    let canonical = normalize_ese_path(db_path);
+
+    let db = EseDb::open(&canonical)
+        .with_context(|| format!("Failed to open ESE database: {}", db_str))?;
 
     // Find history container IDs from the Containers table
     let containers = db
@@ -253,4 +276,92 @@ pub fn extract(db_path: &Path, username: &str) -> Result<Vec<HistoryEntry>> {
     entries.sort_by_key(|e| e.visit_time);
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    //! Regression tests for the WebCacheV01.dat path-handling bug
+    //! (acquiredsecurity/forensic-webhistory#4).
+    //!
+    //! These tests do NOT need a real WebCacheV01.dat fixture; they
+    //! cover the path-normalization layer that sits in front of
+    //! libesedb. The actual ESE-open behavior is exercised by manual
+    //! triage runs documented in the issue.
+
+    use super::*;
+    use std::fs::File;
+    use tempfile::TempDir;
+
+    /// A pre-existing file at a pure-backslash absolute path
+    /// canonicalizes to a path libesedb can open. The exact form is
+    /// platform-specific (Windows uses `\\?\`-prefixed extended-length
+    /// paths) so the test only asserts that canonicalization succeeds
+    /// and the result still points at the same file.
+    #[test]
+    fn normalize_handles_existing_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("WebCacheV01.dat");
+        File::create(&path).unwrap();
+
+        let normalized = normalize_ese_path(&path);
+        assert!(
+            normalized.exists(),
+            "normalized path should still point at the file"
+        );
+    }
+
+    /// A path that mixes forward and backward slashes (the exact bug
+    /// shape that caused issue #4 — `walkdir` joins forward-slash
+    /// `--dir` input with backslash subdirs on Windows) must be
+    /// normalized to a form that libesedb can open. Without
+    /// canonicalization, this path triggers
+    /// `libesedb_file_open: unable to open file` even though the file
+    /// is fine.
+    #[cfg(windows)]
+    #[test]
+    fn normalize_handles_mixed_slash_path() {
+        let dir = TempDir::new().unwrap();
+        let real_path = dir.path().join("WebCacheV01.dat");
+        File::create(&real_path).unwrap();
+
+        // Build a mixed-slash path that points at the same file. The
+        // walkdir bug looked like "F:/triage/C\Users\bob\WebCacheV01.dat".
+        // Reproduce that shape here by replacing all backslashes in the
+        // tempdir prefix with forward slashes, then joining with a
+        // backslash-style child component.
+        let prefix_fwd = dir.path().to_string_lossy().replace('\\', "/");
+        let mixed = format!("{}\\WebCacheV01.dat", prefix_fwd);
+        let mixed_path = PathBuf::from(&mixed);
+
+        // Sanity: the mixed path actually identifies the same file
+        // (Windows resolves it under the hood; this just confirms the
+        // test setup is right).
+        assert!(
+            std::fs::metadata(&mixed_path).is_ok(),
+            "test setup invalid: mixed-slash path doesn't resolve"
+        );
+
+        let normalized = normalize_ese_path(&mixed_path);
+
+        // The normalized path must:
+        //  1. still exist (it's the same file)
+        //  2. NOT contain any forward slashes — libesedb chokes on those
+        assert!(normalized.exists());
+        let normalized_str = normalized.to_string_lossy();
+        assert!(
+            !normalized_str.contains('/'),
+            "normalized path still contains forward slashes: {}",
+            normalized_str
+        );
+    }
+
+    /// If the file does not exist, normalization must fall back to the
+    /// original path so the eventual `EseDb::open()` error message
+    /// still points at what the caller asked for.
+    #[test]
+    fn normalize_falls_back_for_missing_file() {
+        let nonexistent = PathBuf::from("/nonexistent/WebCacheV01.dat");
+        let normalized = normalize_ese_path(&nonexistent);
+        assert_eq!(normalized, nonexistent);
+    }
 }
