@@ -360,7 +360,13 @@ mod tests {
     /// still points at what the caller asked for.
     #[test]
     fn normalize_falls_back_for_missing_file() {
-        let nonexistent = PathBuf::from("/nonexistent/WebCacheV01.dat");
+        // Build a path inside a real temp dir but with a leaf that
+        // does not exist. canonicalize() will fail on the missing leaf
+        // and the helper must return the input path unchanged. Using
+        // a tempdir-scoped path keeps the test deterministic across
+        // platforms instead of relying on a hardcoded `/nonexistent/...`.
+        let dir = TempDir::new().unwrap();
+        let nonexistent = dir.path().join("missing-WebCacheV01.dat");
         let normalized = normalize_ese_path(&nonexistent);
         assert_eq!(normalized, nonexistent);
     }
