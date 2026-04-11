@@ -256,7 +256,7 @@ fn interactive_menu(date_fmt: &str) -> Result<()> {
                 println!("    webx extract -i <db_file> -o <output.csv>");
                 println!("    webx carve -i <db_file> -o <output.csv>");
                 println!();
-    println!("  ARTIFACT TYPES (all extracted by default):");
+                println!("  ARTIFACT TYPES (all extracted by default):");
                 println!("    history, downloads, keywords, cookies, autofill, bookmarks, logins, extensions");
                 println!("    Use --artifacts to limit, e.g. --artifacts history,downloads");
                 println!();
@@ -415,11 +415,8 @@ fn cmd_scan(
                 if !artifact.browser.is_chromium() {
                     continue;
                 }
-                match browsers::chrome_keywords::extract(
-                    &db_path,
-                    username,
-                    Some(artifact.browser),
-                ) {
+                match browsers::chrome_keywords::extract(&db_path, username, Some(artifact.browser))
+                {
                     Ok(entries) => {
                         let out_file = output_dir.join(format!("{label}.csv"));
                         let count = output::write_keywords_csv(&entries, &out_file, date_fmt)?;

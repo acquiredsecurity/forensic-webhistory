@@ -78,10 +78,7 @@ fn extract_from_annos(
     )?;
 
     let meta_rows = meta_stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, Option<String>>(1)?,
-        ))
+        Ok((row.get::<_, i64>(0)?, row.get::<_, Option<String>>(1)?))
     })?;
 
     let mut metadata = std::collections::HashMap::new();
@@ -99,15 +96,10 @@ fn extract_from_annos(
     let mut entries = Vec::new();
 
     for place_id in place_ids {
-        let mut place_stmt = conn.prepare(
-            "SELECT url, title FROM moz_places WHERE id = ?1",
-        )?;
+        let mut place_stmt = conn.prepare("SELECT url, title FROM moz_places WHERE id = ?1")?;
 
         let place = place_stmt.query_row([place_id], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, Option<String>>(1)?,
-            ))
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
         });
 
         let (url, _title) = match place {
@@ -124,7 +116,7 @@ fn extract_from_annos(
             .unwrap_or(dest_uri)
             .to_string();
 
-        let start_time = date_added.and_then(|d| prtime_to_datetime(d));
+        let start_time = date_added.and_then(prtime_to_datetime);
         let start_time = match start_time {
             Some(dt) => dt,
             None => continue,

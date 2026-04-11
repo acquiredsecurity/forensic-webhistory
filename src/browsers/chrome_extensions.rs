@@ -30,7 +30,10 @@ pub fn extract(
     let mut entries = Vec::new();
     for (ext_id, ext_data) in settings {
         // Skip component extensions (built-in Chrome features)
-        let location = ext_data.get("location").and_then(|v| v.as_i64()).unwrap_or(0);
+        let location = ext_data
+            .get("location")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
         // location 5 = COMPONENT, 10 = EXTERNAL_COMPONENT
         if location == 5 || location == 10 {
             continue;

@@ -125,12 +125,12 @@ pub fn extract(
             Some(dt) => dt,
             None => continue,
         };
-        let end_time = end_time_raw.and_then(|t| if t == 0 { None } else { Some(t) }).and_then(chrome_time_to_datetime);
+        let end_time = end_time_raw
+            .and_then(|t| if t == 0 { None } else { Some(t) })
+            .and_then(chrome_time_to_datetime);
 
         // Use chain_url (actual download URL) if available, fall back to tab_url
-        let url = chain_url
-            .or_else(|| tab_url.clone())
-            .unwrap_or_default();
+        let url = chain_url.or_else(|| tab_url.clone()).unwrap_or_default();
         if url.is_empty() {
             continue;
         }

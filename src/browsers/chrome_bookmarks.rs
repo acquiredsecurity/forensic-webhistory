@@ -51,14 +51,7 @@ pub fn extract(
             "synced" => "Mobile Bookmarks",
             _ => root_name.as_str(),
         };
-        walk_bookmarks(
-            node,
-            folder,
-            username,
-            &browser,
-            &file_str,
-            &mut entries,
-        );
+        walk_bookmarks(node, folder, username, &browser, &file_str, &mut entries);
     }
 
     entries.sort_by_key(|e| e.date_added);
@@ -103,7 +96,14 @@ fn walk_bookmarks(
         } else {
             folder_path.to_string()
         };
-        walk_bookmarks(child, &child_folder, username, browser, source_file, entries);
+        walk_bookmarks(
+            child,
+            &child_folder,
+            username,
+            browser,
+            source_file,
+            entries,
+        );
     }
 }
 

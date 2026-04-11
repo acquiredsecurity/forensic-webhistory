@@ -59,10 +59,7 @@ pub fn extract(file_path: &Path, username: &str) -> Result<Vec<LoginEntry>> {
             .and_then(|v| v.as_i64())
             .and_then(unix_millis_to_datetime);
 
-        let times_used = login
-            .get("timesUsed")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as u32;
+        let times_used = login.get("timesUsed").and_then(|v| v.as_i64()).unwrap_or(0) as u32;
 
         entries.push(LoginEntry {
             origin_url: hostname.to_string(),
