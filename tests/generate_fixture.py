@@ -1,4 +1,4 @@
-"""Generate a deterministic Chromium History fixture with no downloads."""
+"""Generate deterministic Chromium History (no downloads) and Firefox places.sqlite fixtures."""
 from pathlib import Path
 import sqlite3
 

@@ -22,4 +22,8 @@ fn formats_exact_known_values_for_all_three_browser_epochs() {
             .to_rfc3339(),
         "2025-01-01T00:00:00+00:00"
     );
+    assert_eq!(
+        filetime_to_datetime(1).unwrap().timestamp_subsec_nanos(),
+        100
+    );
 }

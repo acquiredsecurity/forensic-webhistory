@@ -60,9 +60,12 @@ pub fn filetime_to_datetime(filetime: u64) -> Option<DateTime<Utc>> {
     if filetime == 0 {
         return None;
     }
-    let microseconds = i64::try_from(filetime / 10).ok()?;
+    let seconds = i64::try_from(filetime / 10_000_000).ok()?;
+    let nanoseconds = i64::try_from((filetime % 10_000_000) * 100).ok()?;
     let epoch = chrono::NaiveDate::from_ymd_opt(1601, 1, 1)?.and_hms_opt(0, 0, 0)?;
-    let dt = epoch.checked_add_signed(chrono::Duration::microseconds(microseconds))?;
+    let dt = epoch
+        .checked_add_signed(chrono::Duration::seconds(seconds))?
+        .checked_add_signed(chrono::Duration::nanoseconds(nanoseconds))?;
     Some(DateTime::from_naive_utc_and_offset(dt, Utc))
 }
 
