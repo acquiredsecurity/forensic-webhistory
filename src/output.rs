@@ -75,9 +75,6 @@ const HISTORY_HEADERS: &[&str] = &[
 ];
 
 pub fn write_csv(entries: &[HistoryEntry], output_path: &Path, date_fmt: &str) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)
         .with_context(|| format!("Failed to create output file: {}", output_path.display()))?;
@@ -108,9 +105,6 @@ pub fn write_csv(entries: &[HistoryEntry], output_path: &Path, date_fmt: &str) -
 }
 
 pub fn write_csv_stdout(entries: &[HistoryEntry], date_fmt: &str) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let stdout = std::io::stdout();
     let mut wtr = csv::Writer::from_writer(stdout.lock());
     wtr.write_record(HISTORY_HEADERS)?;
@@ -139,9 +133,6 @@ pub fn write_csv_stdout(entries: &[HistoryEntry], date_fmt: &str) -> Result<usiz
 }
 
 pub fn write_parquet(entries: &[HistoryEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("VisitTime", DataType::Utf8, true),
         Field::new("URL", DataType::Utf8, true),
@@ -247,9 +238,6 @@ pub fn write_downloads_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -283,9 +271,6 @@ pub fn write_downloads_csv(
 }
 
 pub fn write_downloads_parquet(entries: &[DownloadEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("StartTime", DataType::Utf8, true),
         Field::new("URL", DataType::Utf8, true),
@@ -367,9 +352,6 @@ pub fn write_keywords_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -424,9 +406,6 @@ pub fn write_cookies_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -480,9 +459,6 @@ pub fn write_autofill_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -530,9 +506,6 @@ pub fn write_bookmarks_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -582,9 +555,6 @@ pub fn write_logins_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -636,9 +606,6 @@ pub fn write_extensions_csv(
     output_path: &Path,
     date_fmt: &str,
 ) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     ensure_parent(output_path)?;
     let file = File::create(output_path)?;
     let mut wtr = csv::Writer::from_writer(file);
@@ -670,9 +637,6 @@ pub fn write_extensions_csv(
 // ============================================================================
 
 pub fn write_keywords_parquet(entries: &[KeywordSearchEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("VisitTime", DataType::Utf8, true),
         Field::new("SearchTerm", DataType::Utf8, true),
@@ -735,9 +699,6 @@ pub fn write_keywords_parquet(entries: &[KeywordSearchEntry], output_path: &Path
 }
 
 pub fn write_cookies_parquet(entries: &[CookieEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("CreationTime", DataType::Utf8, true),
         Field::new("ExpiryTime", DataType::Utf8, true),
@@ -812,9 +773,6 @@ pub fn write_cookies_parquet(entries: &[CookieEntry], output_path: &Path) -> Res
 }
 
 pub fn write_autofill_parquet(entries: &[AutofillEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("FirstUsed", DataType::Utf8, true),
         Field::new("LastUsed", DataType::Utf8, true),
@@ -873,9 +831,6 @@ pub fn write_autofill_parquet(entries: &[AutofillEntry], output_path: &Path) -> 
 }
 
 pub fn write_bookmarks_parquet(entries: &[BookmarkEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("DateAdded", DataType::Utf8, true),
         Field::new("DateLastUsed", DataType::Utf8, true),
@@ -934,9 +889,6 @@ pub fn write_bookmarks_parquet(entries: &[BookmarkEntry], output_path: &Path) ->
 }
 
 pub fn write_logins_parquet(entries: &[LoginEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("DateCreated", DataType::Utf8, true),
         Field::new("DateLastUsed", DataType::Utf8, true),
@@ -999,9 +951,6 @@ pub fn write_logins_parquet(entries: &[LoginEntry], output_path: &Path) -> Resul
 }
 
 pub fn write_extensions_parquet(entries: &[ExtensionEntry], output_path: &Path) -> Result<usize> {
-    if entries.is_empty() {
-        return Ok(0);
-    }
     let schema = Arc::new(Schema::new(vec![
         Field::new("InstallTime", DataType::Utf8, true),
         Field::new("ExtensionID", DataType::Utf8, true),

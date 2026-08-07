@@ -84,6 +84,12 @@ webx scan -d /cases/CASE001/Triage/ -o /cases/CASE001/output/
 Available artifact type names for `--artifacts`:
 `history`, `downloads`, `keywords`, `cookies`, `autofill`, `bookmarks`, `logins`, `extensions`
 
+Every artifact successfully extracted from a supported browser produces an output
+file. Empty successful results are written as a header-only CSV and, when `--out`
+is requested, an empty Parquet file carrying the complete schema. The summary
+reports artifacts attempted, artifacts with rows, and files written so an empty
+result remains distinguishable from an unattempted one.
+
 ### Carve Deleted Browser History
 
 Recover deleted browsing history from SQLite freelist pages, WAL files, and raw byte scanning:
