@@ -19,7 +19,8 @@ fn only_file_containing(dir: &Path, needle: &str, extension: &str) -> PathBuf {
 
 #[test]
 fn attempted_empty_artifacts_write_schema_outputs_and_reconcile_summary() {
-    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/Users/synthetic/AppData/Local/Google/Chrome");
     let temp = tempfile::tempdir().unwrap();
     let csv_dir = temp.path().join("csv");
     let parquet_dir = temp.path().join("parquet");
