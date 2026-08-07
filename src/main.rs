@@ -339,11 +339,15 @@ fn cmd_scan(
 
     let mut total = 0usize;
     let mut errors = 0usize;
+    let mut artifacts_attempted = 0usize;
+    let mut artifacts_with_rows = 0usize;
+    let mut files_written = 0usize;
 
     for artifact in &artifacts {
         if !artifact_filter.contains(&artifact.artifact_type) {
             continue;
         }
+        artifacts_attempted += 1;
 
         let username = user.unwrap_or(&artifact.username);
         let db_path = PathBuf::from(&artifact.db_path);
@@ -379,6 +383,8 @@ fn cmd_scan(
                             output::write_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -404,6 +410,8 @@ fn cmd_scan(
                             output::write_downloads_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -426,6 +434,8 @@ fn cmd_scan(
                             output::write_keywords_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -451,6 +461,8 @@ fn cmd_scan(
                             output::write_cookies_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -476,6 +488,8 @@ fn cmd_scan(
                             output::write_autofill_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -501,6 +515,8 @@ fn cmd_scan(
                             output::write_bookmarks_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -526,6 +542,8 @@ fn cmd_scan(
                             output::write_logins_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -551,6 +569,8 @@ fn cmd_scan(
                             output::write_extensions_parquet(&entries, &pq_file)?;
                         }
                         total += count;
+                        artifacts_with_rows += usize::from(count > 0);
+                        files_written += 1 + usize::from(parquet_dir.is_some());
                     }
                     Err(e) => {
                         error!("  {} — FAILED: {}", label, e);
@@ -563,9 +583,11 @@ fn cmd_scan(
 
     info!("");
     info!(
-        "Complete: {} total entries extracted from {} artifact(s) ({} errors)",
+        "Complete: {} total entries; {} artifact(s) attempted, {} with rows; {} file(s) written ({} errors)",
         total,
-        artifacts.len(),
+        artifacts_attempted,
+        artifacts_with_rows,
+        files_written,
         errors
     );
     Ok(())
