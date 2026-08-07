@@ -4,7 +4,8 @@ import sqlite3
 
 path = Path(__file__).parent / "fixtures" / "Users" / "synthetic" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default" / "History"
 path.parent.mkdir(parents=True, exist_ok=True)
-if path.exists(): path.unlink()
+if path.exists():
+    path.unlink()
 db = sqlite3.connect(path)
 db.executescript("""
 CREATE TABLE urls (id INTEGER PRIMARY KEY, url TEXT, title TEXT, visit_count INTEGER, typed_count INTEGER);
@@ -13,4 +14,5 @@ CREATE TABLE downloads (id INTEGER PRIMARY KEY, current_path TEXT, target_path T
 INSERT INTO urls VALUES (1, 'https://synthetic.invalid/example', 'Synthetic history', 1, 1);
 INSERT INTO visits VALUES (1, 1, 13380163200000000, 0, 1);
 """)
-db.commit(); db.close()
+db.commit()
+db.close()

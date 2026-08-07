@@ -49,6 +49,7 @@ fn attempted_empty_artifacts_write_schema_outputs_and_reconcile_summary() {
     let downloads_csv = only_file_containing(&csv_dir, "_downloads_", ".csv");
     let history_csv = only_file_containing(&csv_dir, "_history_", ".csv");
     let downloads_parquet = only_file_containing(&parquet_dir, "_downloads_", ".parquet");
+    let history_parquet = only_file_containing(&parquet_dir, "_history_", ".parquet");
 
     let mut downloads = csv::Reader::from_path(&downloads_csv).unwrap();
     assert!(!downloads.headers().unwrap().is_empty());
@@ -59,6 +60,61 @@ fn attempted_empty_artifacts_write_schema_outputs_and_reconcile_summary() {
 
     let reader = SerializedFileReader::new(File::open(downloads_parquet).unwrap()).unwrap();
     assert_eq!(reader.metadata().file_metadata().num_rows(), 0);
+    let download_fields: Vec<_> = reader
+        .metadata()
+        .file_metadata()
+        .schema_descr()
+        .columns()
+        .iter()
+        .map(|column| column.name())
+        .collect();
+    assert_eq!(
+        download_fields,
+        [
+            "StartTime",
+            "URL",
+            "TargetPath",
+            "TotalBytes",
+            "State",
+            "DangerType",
+            "MIMEType",
+            "WebBrowser",
+            "UserProfile",
+            "RecordID",
+            "NaturalLanguage",
+        ]
+    );
+
+    let reader = SerializedFileReader::new(File::open(history_parquet).unwrap()).unwrap();
+    assert_eq!(reader.metadata().file_metadata().num_rows(), 1);
+    let history_fields: Vec<_> = reader
+        .metadata()
+        .file_metadata()
+        .schema_descr()
+        .columns()
+        .iter()
+        .map(|column| column.name())
+        .collect();
+    assert_eq!(
+        history_fields,
+        [
+            "VisitTime",
+            "URL",
+            "Title",
+            "VisitCount",
+            "VisitedFrom",
+            "VisitType",
+            "VisitDuration",
+            "WebBrowser",
+            "UserProfile",
+            "BrowserProfile",
+            "URLLength",
+            "TypedCount",
+            "HistoryFile",
+            "RecordID",
+            "NaturalLanguage",
+        ]
+    );
 
     let named_paths: Vec<_> = log
         .lines()
