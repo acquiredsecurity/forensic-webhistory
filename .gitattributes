@@ -1,0 +1,3 @@
+tests/fixtures/**/History binary
+tests/fixtures/**/*.sqlite binary
+tests/fixtures/**/*.dat binary

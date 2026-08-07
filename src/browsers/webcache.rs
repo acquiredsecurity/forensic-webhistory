@@ -49,15 +49,24 @@ fn parse_ese_datetime(s: &str) -> Option<DateTime<Utc>> {
 
     // Try parsing as FILETIME integer (100ns intervals since 1601-01-01)
     if let Ok(ft) = s.parse::<u64>() {
-        if ft > 0 {
-            let microseconds = ft / 10;
-            let epoch = chrono::NaiveDate::from_ymd_opt(1601, 1, 1)?.and_hms_opt(0, 0, 0)?;
-            let dt = epoch + chrono::Duration::microseconds(microseconds as i64);
-            return Some(DateTime::from_naive_utc_and_offset(dt, Utc));
-        }
+        return filetime_to_datetime(ft);
     }
 
     None
+}
+
+/// Convert a Windows FILETIME value (100ns intervals since 1601-01-01 UTC).
+pub fn filetime_to_datetime(filetime: u64) -> Option<DateTime<Utc>> {
+    if filetime == 0 {
+        return None;
+    }
+    let seconds = i64::try_from(filetime / 10_000_000).ok()?;
+    let nanoseconds = i64::try_from((filetime % 10_000_000) * 100).ok()?;
+    let epoch = chrono::NaiveDate::from_ymd_opt(1601, 1, 1)?.and_hms_opt(0, 0, 0)?;
+    let dt = epoch
+        .checked_add_signed(chrono::Duration::seconds(seconds))?
+        .checked_add_signed(chrono::Duration::nanoseconds(nanoseconds))?;
+    Some(DateTime::from_naive_utc_and_offset(dt, Utc))
 }
 
 /// Parse URL from ESE value string — handles multiple IE URL formats:
