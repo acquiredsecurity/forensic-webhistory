@@ -1,4 +1,9 @@
+pub mod app;
 pub mod browsers;
 pub mod carver;
+pub mod cli;
+pub mod discovery;
+pub mod metrics;
+pub mod model;
 pub mod output;
-pub mod scanner;
+pub mod parser;

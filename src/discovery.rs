@@ -1,7 +1,7 @@
 use std::path::Path;
 use walkdir::WalkDir;
 
-use crate::browsers::{ArtifactType, BrowserArtifact, BrowserType};
+use crate::model::{ArtifactType, BrowserArtifact, BrowserType};
 
 /// Extract username from a file path by finding the segment after the LAST "Users/".
 /// Uses rfind to handle cases where triage data is stored under a local user's home dir
